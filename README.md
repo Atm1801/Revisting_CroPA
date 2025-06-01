@@ -100,9 +100,10 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 4. **Enhancement #3: Value-Vector–Guided Loss for Vision-Encoder Attention (D-UAP Integration)**
 
    * Adapt the Doubly-Universal Adversarial Perturbation (D-UAP) concept by aligning perturbations in the **value-vector space** of the vision encoder’s attention layers, targeting layers most crucial for semantic representation.
-   * Formulate a joint objective \$L\_{\text{re-CroPA}} = L\_{\text{CroPA}}(x+\delta\_v, t+\delta\_t) ;-; \lambda,L\_{\text{D-UAP}}(\delta\_v)\$, where
-     $L_{\text{D-UAP}} = \sum_{i=1}^N \bigl(1 - \cos\bigl(V_i(x+\delta_v),\,V_t\bigr)\bigr),$
-     with \$V\_i(\cdot)\$ denoting value vectors of the \$i\$th attention head for an input image, and \$V\_t\$ the target text’s reference image value vectors.
+   * Formulate a joint objective
+     > \$L\_{\text{re-CroPA}} = L\_{\text{CroPA}}(x+\delta\_v, t+\delta\_t) ;-; \lambda,L\_{\text{D-UAP}}(\delta\_v)\$,
+     > where $L_{\text{D-UAP}} = \sum_{i=1}^N \bigl(1 - \cos\bigl(V_i(x+\delta_v),\,V_t\bigr)\bigr),$
+     > with \$V\_i(\cdot)\$ denoting value vectors of the \$i\$th attention head for an input image, and \$V\_t\$ the target text’s reference image value vectors.
    * Realize **12.5 %** overall ASR gains on BLIP-2 and large improvements in cross-model transferability when source and target share the same vision encoder.
 
 5. **Insightful Analyses**
@@ -195,13 +196,15 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
 
    * Let \$f\_v(\cdot)\$ be the VLM’s vision encoder.
    * Solve:
-     $\delta_{\text{init}} = \underset{\|\delta\|_\infty \le \epsilon}{\arg\min}\;\|\,f_v(x + \delta)\;-\;f_v(x_{\text{target}})\|_2^2.$
+    Find δ₍init₎ such that
+     > δ_init = argmin_{||δ||_∞ ≤ ε} ||f_v(x + δ) − f_v(x_target)||²₂
    * Typically solved via PGD using \$\ell\_2\$ loss in feature space until a semantically aligned initialization \$\delta\_{\text{init}}\$ is obtained.
 
 3. **PGD Refinement**
 
    * Starting from \$x\_{\text{adv}}^{(0)} = x + \delta\_{\text{init}}\$, refine via:
-     $x_{\text{adv}}^{(t+1)} = \Pi_{\mathcal{B}_\epsilon(x)}\Bigl( x_{\text{adv}}^{(t)}\;-\;\alpha\,\nabla_{x_{\text{adv}}}\, \|\,f_v(x_{\text{adv}}^{(t)})\;-\;f_v(x_{\text{target}})\|_2^2 \Bigr).$
+     > x_adv^(t+1) = Π_{B_ε(x)} [ x_adv^(t) - α ∇_{x_adv} ||f_v(x_adv^(t)) - f_v(x_target)||²₂ ]
+
    * After initialization, we plug this \$x\_{\text{adv}}^{(0)}\$ into the standard CroPA PGD loop, replacing random noise with semantically informed initialization.
 
 **Key Benefits**
@@ -231,7 +234,8 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
 **Integration with CroPA**
 
 * At each PGD iteration, instead of optimizing on a single clean image \$x\$, we generate a minibatch of mixed images (SCMix or CutMix) and optimize a *universal perturbation* \$\delta\_{\text{univ}}\$ such that:
-  $\min_{\|\delta\|_\infty\le\epsilon} \sum_{i=1}^B\,L\bigl(f(x_i + \delta,\,x_t),\,\text{target}\bigr),$
+ > min_{||δ||_∞ ≤ ε} ∑_{i=1}^B L(f(x_i + δ, x_t), target)
+
   where \$x\_i\$ are mixed or original images.
 * Empirically, **SCMix** tends to yield stronger cross-image ASRs than CutMix, likely due to smoother feature blending.
 
@@ -270,7 +274,7 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
    * At each PGD step:
 
      1. Compute \$\nabla\_{\delta\_v},L\_{\text{re-CroPA}}\$.
-     2. Update \$x\_v’ \leftarrow \text{Clip}*{x,\epsilon}\bigl(x\_v’ - \alpha ,\text{sign}(\nabla*{\delta\_v}L\_{\text{re-CroPA}})\bigr)\$.
+     2. Update x_v' ← Clip_{x, ε} ( x_v' - α · sign(∇_{δ_v} L_re-CroPA) )
      3. Every \$N\$ steps, update \$\delta\_t\$ as in vanilla CroPA.
 
 **Key Outcomes**
@@ -507,7 +511,7 @@ pip install open_clip_torch  # optional if using OpenCLIP
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/<your-username>/Revisiting-CroPA.git
+   git clone https://github.com/Swadesh06/Revisiting-CroPA.git
    cd Revisiting-CroPA
    ```
 
@@ -748,7 +752,7 @@ This repository is released under the [MIT License](./LICENSE.md). Feel free to 
 
 ## Acknowledgments
 
-This work was supported by \[Your Institution / Funding Sources]. We thank the authors of Luo *et al.* (2024) for making CroPA’s original code available, and the open-source communities behind BLIP-2, InstructBLIP, Flamingo, LLaVA, and Stable Diffusion projects.
+We thank the authors of Luo *et al.* (2024) for making CroPA’s original code available, and the open-source communities behind BLIP-2, InstructBLIP, Flamingo, LLaVA, and Stable Diffusion projects.
 
 ---
 
