@@ -65,11 +65,8 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 * **GitHub Repository**:
 
   ```
-  https://github.com/<your-username>/Revisiting-CroPA
+  https://github.com/Swadesh06/Revisting_CroPA.git
   ```
-
-  > **Note:** Replace `<your-username>` with your actual GitHub username.
-
 ---
 
 ## Abstract
