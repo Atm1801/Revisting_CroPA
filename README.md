@@ -63,7 +63,7 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 
 ## Paper & Code Links
 
-* **Paper (Under Review)**: [Revisiting\_CroPA\_A\_Reprod.pdf](./Revisiting_CroPA_A_Reprod.pdf)
+* **Paper (Under Review)**: [Revisiting\_CroPA\_A\_Reprod.pdf]([./Revisiting_CroPA_A_Reprod.pdf](https://openreview.net/pdf?id=5L90cl0xtf))
 * **GitHub Repository**:
 
   ```
