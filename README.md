@@ -349,7 +349,7 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
 
 ### Implementation Details
 
-* **Framework**: PyTorch 1.12+, CUDA 11.6+ (tested on NVIDIA L40S, A100).
+* **Framework**: PyTorch 1.12+, CUDA 11.6+ (tested on NVIDIA L40S - PyTorch Lightning).
 
 * **Diffusion Model (for Semantic Init)**: Stable Diffusion XL (via [CompVis/stable-diffusion](https://github.com/CompVis/stable-diffusion) or \[stability AI’s SDXL shard]).
 
