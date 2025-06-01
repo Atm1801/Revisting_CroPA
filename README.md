@@ -18,7 +18,7 @@ Large Vision-Language Models (VLMs) such as Flamingo, BLIP-2, InstructBLIP, and 
 
 Our experiments validate CroPA’s original claims and demonstrate that the proposed improvements yield substantial Attack Success Rate (ASR) gains across diverse VLM architectures and tasks.
 
-<img src='https://github.com/Swadesh06/Revisting_CroPA/blob/main/media/ReCroPA_DUAP.png' height= 800 width=1200>
+<img src='https://github.com/Swadesh06/Revisting_CroPA/blob/main/media/ReCroPA_DUAP.png' height= 700 width=1200>
 
 ---
 
