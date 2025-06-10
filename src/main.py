@@ -25,9 +25,7 @@ from utils.eval_tools import (
 # import torch
 from PIL import Image
 # from IPython.display import display
-from torchvision import transforms
-import torch.nn.functional as F
-import torch.nn as nn
+# from torchvision import transforms
 # from transformers import ViTFeatureExtractor, ViTModel
 
 # def generate_image(prompt: str) -> Image.Image:
@@ -106,41 +104,7 @@ import torch.nn as nn
 #     # Convert to PIL image
 #     return transforms.ToPILImage()(perturbed.squeeze())
 
-#%%      
-# 
-# 
-# 
-class MyVisionEncoder(nn.Module):
-    def __init__(self, original_encoder):
-        super().__init__()
-        self.original_encoder = original_encoder
-
-    def forward(self, image, normalize=True):
-        # Call the original encoder without normalization.
-        #features = self.original_encoder(image, normalize=False)
-        features = self.original_encoder(image)
-        # Then, if normalization is required:
-        #features = F.normalize(features, dim=-1)
-        # If features is a tuple, extract the first element.
-        if isinstance(features, tuple):
-            features = features[0]
-        if normalize:
-            features = F.normalize(features, dim=-1)
-        return features
-
-import torch.nn.functional as F
-from open_clip.model import CLIP
-
-def patched_encode_image(self, image, normalize: bool = False):
-    features = self.visual(image)
-    # If features is a tuple, extract the first element.
-    if isinstance(features, tuple):
-        features = features[0]
-    return F.normalize(features, dim=-1) if normalize else features
-
-# Patch the method in the CLIP class.
-CLIP.encode_image = patched_encode_image
-
+#%%       
 def attack(
     args: argparse.Namespace,
     eval_model: BaseEvalModel,
@@ -294,6 +258,11 @@ def attack(
         if model_name in ["blip2","instructblip"]:
             noise = torch.randn([1,3,224,224], requires_grad=True,device = device)
             lm_emb = eval_model.model.language_model.get_input_embeddings()
+        elif model_name in ["clip"]:
+            noise = torch.randn([1,3,224,224], requires_grad=True,device = device)
+            #print("Eval model",eval_model.model)
+            lm_emb = eval_model.model.text_model.embeddings.token_embedding
+
         else:
             noise = torch.randn([1,1,3,224,224], requires_grad=True,device = device)
             lm_emb = eval_model.model.lang_encoder.get_input_embeddings()   
@@ -310,76 +279,6 @@ def attack(
         access_order = deque(access_order) 
         index_count = 0
         t_ids = []
-        def get_value_vectors(pixel_values):
-            # reshape pixel_values from [B, I, F, C, H, W] to [B, C, H, W]
-            if pixel_values.dim() == 3:  
-                 pixel_values = pixel_values.unsqueeze(0)  # Convert [3, 224, 224] → [1, 3, 224, 224]
-            pixel_values = pixel_values.float()
-            collected_hidden_states = {}
-            """
-            For open flamingo
-            """
-            # Define a hook function that saves the output for a given layer index.
-            def hook_fn(layer_idx):
-                def hook(module, input, output):
-                    collected_hidden_states[layer_idx] = output
-                return hook
-            #eval_model.model.vision_encoder = MyVisionEncoder(eval_model.model.vision_encoder)
-             # Assume that the intermediate transformer blocks are stored in:
-            transformer = eval_model.model.vision_encoder.visual.transformer.resblocks
-
-            hooks = []
-            # Register hooks on transformer blocks with indices in the desired range.
-            # Adjust the range as needed (here assuming 14 to 28, inclusive)
-            for i, block in enumerate(transformer):
-                if 14 <= i < 29:
-                    hook = block.register_forward_hook(hook_fn(i))
-                    hooks.append(hook)
-
-            # Run a forward pass to trigger the hooks.
-            with torch.cuda.amp.autocast(enabled=False):
-                _ = eval_model.model.vision_encoder.visual(pixel_values)
-
-            # Remove hooks after the forward pass.
-            for h in hooks:
-                h.remove()
-
-            # Sort the collected hidden states by layer index.
-            hidden_states = [collected_hidden_states[i] for i in sorted(collected_hidden_states.keys())]
-            # Concatenate them along the channel dimension (usually dim=1).
-            value_vectors = torch.cat(hidden_states, dim=1)
-            return value_vectors
-            
-            print(dir(eval_model.model.vision_encoder.visual))
-            with torch.cuda.amp.autocast(enabled=False):
-                vision_outputs = eval_model.model.vision_encoder.forward_intermediates(
-                    image=pixel_values,
-                    image_indices=list(range(14, 29)),
-                    normalize=False,           # Do not normalize intermediates now
-                    intermediates_only=True      # We only need the intermediates
-                )
-            print("data type is: ", type(vision_outputs))
-            print(vision_outputs)
-            vision_outputs=dict(vision_outputs)
-            hidden_states = vision_outputs.hidden_states
-            num_layers = len(hidden_states)
-            middle_to_late_layers = range( 14, 29)
-            value_vectors = [hidden_states[layer_idx] for layer_idx in middle_to_late_layers]
-            return torch.cat(value_vectors, dim=1)
-
-        transform = transforms.Compose([
-                    transforms.Resize((224, 224)),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # CLIP normalization
-                    ])
-        sdxl_result_path="/teamspace/studios/this_studio/Re-CroPA/sdxl_gen_images/bomb.png"
-        gen_img_pil = Image.open(sdxl_result_path).convert("RGB")
-        target_inputs = transform(gen_img_pil).unsqueeze(0).to(device)
-        print(f"target_inputs shape: {target_inputs.shape}")  
-        # Expected: torch.Size([1, 3, 224, 224])
-
-        with torch.no_grad():
-            target_value_vectors = get_value_vectors(target_inputs).float()
         for ep in range(iters):
             # get the text index to update
             if index_count != 0 and index_count % prompt_num == 0:
@@ -395,15 +294,20 @@ def attack(
             input_x = input_x_original.clone().detach()
             if model_name=="open_flamingo":
                 input_x[0,-1] = input_x[0,-1] + noise
-            elif model_name in ["instructblip","blip2"]:
+            elif model_name in ["instructblip","blip2", "clip"]:
                 # print(input_x.shape) #[1,3,224,224]
                 input_x = input_x + noise
+                
             labels = labels_list[text_idx]
             input_ids = input_ids_list[text_idx]
             attention_mask = attention_mask_list[text_idx]
             
             inputs_embeds_original = lm_emb(input_ids).clone().detach()
-            text_perturb = torch.tensor(perturb_list[text_idx],requires_grad=True,device=device)
+            if model_name=="clip":
+                text_perturb = perturb_list[text_idx].clone().detach().to(device).requires_grad_(True)
+            else: 
+                text_perturb = torch.tensor(perturb_list[text_idx],requires_grad=True,device=device)
+
             # print(text_perturb.requires_grad) 
             # text_perturb = text_perturb.to(device)
             
@@ -412,25 +316,14 @@ def attack(
                 inputs_embeds = None
             
             if model_name=="open_flamingo":
-                perturbed_inputs = torch.clamp(input_x, 0, 1)
-                #print("pertubed inputs shape:", perturbed_inputs.shape)
-                # Ensure correct reshaping from [1, I, F, C, H, W] -> [B, C, H, W]
-                if perturbed_inputs.dim() == 6:
-                    perturbed_inputs = perturbed_inputs[:, 0, 0, :, :, :]  # Select first I and F
-                #perturbed_inputs=perturbed_inputs.squeeze(0).squeeze(0)
-                perturbed_value_vectors = get_value_vectors(perturbed_inputs).float()
-                cosine_similarity_loss = torch.nn.CosineSimilarity(dim=-1)
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
                     lang_x=input_ids,
                     vision_x=input_x,                
                     attention_mask=attention_mask,
                     labels=labels
-                )[0]  -5*cosine_similarity_loss(perturbed_value_vectors, target_value_vectors).mean()
+                )[0]
             elif model_name=="blip2":
-                perturbed_inputs = torch.clamp(input_x, 0, 1)
-                perturbed_value_vectors = get_value_vectors(perturbed_inputs).float()
-                cosine_similarity_loss = torch.nn.CosineSimilarity(dim=-1)
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
                     input_ids=input_ids,
@@ -438,7 +331,7 @@ def attack(
                     attention_mask=attention_mask,
                     labels=labels,
                     normalize_vision_input = True
-                )[0] -5*cosine_similarity_loss(perturbed_value_vectors, target_value_vectors).mean()
+                )[0]
             elif model_name=="instructblip":
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
@@ -451,6 +344,15 @@ def attack(
                     qformer_attention_mask= qformer_attention_mask_list[text_idx]
                 )[0]
 
+            elif model_name == "clip":
+                # Instead of calling model(...)[0], compute loss via the helper method.
+               loss = eval_model.compute_loss(
+                    inputs_embeds=inputs_embeds,   # if you are perturbing text embeddings
+                    input_ids=input_ids,
+                    pixel_values=input_x,
+                    attention_mask=attention_mask,
+                    labels=labels
+                )
             # total_loss.append(float(loss.item()))
             loss.backward()
             loss_json[img_id].append(float(loss.item()))
@@ -540,6 +442,7 @@ def attack(
 
                         process_function = postprocess_generation
                         new_predictions = list(map(process_function, outputs))
+                        print("new predictions is ", new_predictions)
                         clean_newpredictions = list(map(process_function, clean_outputs)) if not args.quick_eval else None
                         for i in range(len(new_predictions)):
                             target_attack_is_success = False
@@ -640,7 +543,7 @@ if __name__=="__main__":
     if config_args.device >= 0:
         print("use specified gpu",config_args.device)
     else:
-        config_args.device= get_available_gpus(45000)[0]
+        config_args.device= get_available_gpus(5000)[0]
     device= f"cuda:{ config_args.device}"
     eval_model = load_model(config_args.device,module,config_args.model_name)
     train_dataset, test_dataset = load_datasets(config_args)
@@ -653,28 +556,26 @@ if __name__=="__main__":
         prompt_num_to_alpha2 = config_args.prompt_num_to_alpha2    
         alpha2 = prompt_num_to_alpha2[prompt_num]
     
-    for target_text in  ["unknown","metaphor"]:
+    #target_text = "bomb"
 
-        iter_num = 1701
-        
-        attack(
-            config_args,
-            eval_model = eval_model,
-            max_generation_length = 5,
-            num_beams= 3,
-            length_penalty = -2.0,
-            num_shots = num_shots,
-            alpha1 = 1/255,
-            epsilon = 16/255,
-            fraction=config_args.fraction,
-            iters = iter_num,
-            target = target_text+config_args.eoc,
-            base_dir = f"output/{config_args.model_name}_shots_{num_shots}/{config_args.method}/num_{prompt_num}_{target_text}",
-            alpha2 = alpha2 ,
-            prompt_num=config_args.prompt_num,
-            datasets=(train_dataset,  test_dataset),
-        )
+    iter_num = 1701
+    
+    attack(
+        config_args,
+        eval_model = eval_model,
+        max_generation_length = 5,
+        num_beams= 3,
+        length_penalty = -2.0,
+        num_shots = num_shots,
+        alpha1 = 1/255,
+        epsilon = 16/255,
+        fraction=config_args.fraction,
+        iters = iter_num,
+        target = config_args.target+config_args.eoc,
+        base_dir = f"output/{config_args.model_name}_shots_{num_shots}/{config_args.method}/num_{prompt_num}_{config_args.target}",
+        alpha2 = alpha2 ,
+        prompt_num=config_args.prompt_num,
+        datasets=(train_dataset,  test_dataset),
+    )
 
 
-
-# %%

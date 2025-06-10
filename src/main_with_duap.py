@@ -1,3 +1,4 @@
+#%%
 import argparse
 import importlib
 import json
@@ -20,90 +21,45 @@ from utils.eval_tools import (
     cap_instruction, cls_instruction, load_img_specific_questions, vqa_agnostic_instruction, 
     plot_loss, postprocess_generation,record_format_summary, record_format_summary_affect
 )
-# from diffusers import StableDiffusionXLPipeline
-# import torch
+
 from PIL import Image
 # from IPython.display import display
-# from torchvision import transforms
-# from transformers import ViTFeatureExtractor, ViTModel
+from torchvision import transforms
+import torch.nn.functional as F
+import torch.nn as nn
 
-# def generate_image(prompt: str) -> Image.Image:
-#     """
-#     Generates an image from a text prompt using SDXL 1.0.
 
-#     Args:
-#         prompt (str): The text description for the image generation.
+class MyVisionEncoder(nn.Module):
+    def __init__(self, original_encoder):
+        super().__init__()
+        self.original_encoder = original_encoder
 
-#     Returns:
-#         Image.Image: The generated PIL image.
-#     """
-#     # Use GPU if available; otherwise fall back on CPU.
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     global pipe
-#     pipe = pipe.to(device)
+    def forward(self, image, normalize=True):
+        # Call the original encoder without normalization.
+        #features = self.original_encoder(image, normalize=False)
+        features = self.original_encoder(image)
+        # Then, if normalization is required:
+        #features = F.normalize(features, dim=-1)
+        # If features is a tuple, extract the first element.
+        if isinstance(features, tuple):
+            features = features[0]
+        if normalize:
+            features = F.normalize(features, dim=-1)
+        return features
 
-#     # Generate the image.
-#     result = pipe(prompt=prompt, num_inference_steps=50, guidance_scale=7.5)
+import torch.nn.functional as F
+from open_clip.model import CLIP
 
-#     # Extract the first image from the result.
-#     generated_image = result.images[0]
-#     return generated_image
+def patched_encode_image(self, image, normalize: bool = False):
+    features = self.visual(image)
+    # If features is a tuple, extract the first element.
+    if isinstance(features, tuple):
+        features = features[0]
+    return F.normalize(features, dim=-1) if normalize else features
 
-# def pgd_align_images(budget: float, timesteps: int, gen_img: Image.Image, target_img: Image.Image) -> Image.Image:
-#     """
-#     Aligns ViT embeddings between generated and target images using Projected Gradient Descent (PGD).
+# Patch the method in the CLIP class.
+CLIP.encode_image = patched_encode_image
 
-#     Args:
-#         budget (float): Maximum allowed perturbation (0-1 range)
-#         timesteps (int): Number of optimization steps
-#         gen_img (Image.Image): Generated image to modify
-#         target_img (Image.Image): Target reference image
-
-#     Returns:
-#         PIL.Image: Modified image with aligned embeddings
-#     """
-#     # Load and preprocess images
-#     transform = transforms.Compose([
-#         transforms.Resize((224, 224)),
-#         transforms.ToTensor()
-#     ])
-
-#     gen_img = transform(gen_img.convert("RGB")).unsqueeze(0)
-#     target_img = transform(target_img.convert("RGB")).unsqueeze(0)
-
-#     # Initialize model
-#     model = ViTModel.from_pretrained("openai/clip-vit-large-patch14")
-#     model.eval()
-
-#     # Get target embedding
-#     with torch.no_grad():
-#         target_embedding = model(pixel_values=target_img).last_hidden_state.mean(dim=1)
-
-#     # Initialize perturbed image
-#     perturbed = gen_img.clone().requires_grad_(True)
-#     optimizer = torch.optim.Adam([perturbed], lr=1)
-
-#     # PGD optimization loop
-#     for i in range(timesteps):
-#         optimizer.zero_grad()
-#         print(i)
-#         # Calculate embedding loss
-#         emb = model(pixel_values=perturbed).last_hidden_state.mean(dim=1)
-#         loss = torch.nn.functional.mse_loss(emb, target_embedding)
-#         loss.backward()
-
-#         # Update with gradient descent
-#         optimizer.step()
-
-#         # Project perturbations to valid range
-#         with torch.no_grad():
-#             delta = torch.clamp(perturbed - gen_img, -budget, budget)
-#             perturbed.copy_(torch.clamp(gen_img + delta, 0, 1))
-
-#     # Convert to PIL image
-#     return transforms.ToPILImage()(perturbed.squeeze())
-
-#%%       
 def attack(
     args: argparse.Namespace,
     eval_model: BaseEvalModel,
@@ -116,7 +72,7 @@ def attack(
     iters: int = 200,
     alpha2: float = 0.01,
     fraction: float = 0.01,
-    target: str = "unknown<|endofchunk|>",
+    target: str = "bomb<|endofchunk|>",
     base_dir: str = "./",
     prompt_num: int = 1,
     datasets: Tuple[Dataset, Dataset] = None,
@@ -124,85 +80,12 @@ def attack(
     model_name = args.model_name
     method = args.method
     
+    print(model_name)
     save_perturb_iterations = list(range(900,iters, 200)) 
     cropa_end = 300
     step = max((cropa_end//prompt_num),1)
     cropa_iter = [i for i in range(step,cropa_end+1, step)] # text perturb update iterations 
-    import gc
-    from PIL import Image
-    from torchvision import transforms
-    
-    def pgd_align_images_with_loaded_blip2(budget, timesteps, gen_img_path, target_img_path) -> Image.Image:
-    
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        transform = transforms.Compose([
-                        transforms.Resize((224, 224)),
-                        transforms.ToTensor()
-                    ])
-
-        # Load and preprocess the images.
-        gen_img = gen_img_path.to(device)
-        target_img = transform(target_img_path).unsqueeze(0).to(device)
-
-        # Ensure proper precision – when using CUDA, our images are cast to half.
-        # if device == "cuda":
-        #     gen_img = gen_img.half()
-        #     target_img = target_img.half()
-
-        # Compute the target embedding using BLIP‑2's vision encoder.
-        with torch.no_grad():
-            target_out = eval_model.model.vision_model(pixel_values=target_img)
-            target_embedding = target_out.last_hidden_state.mean(dim=1)
-        print(target_embedding)
-        # Initialize the perturbed image (the one to be optimized).
-        perturbed = gen_img.clone().detach().requires_grad_(True)
-        optimizer = torch.optim.Adam([perturbed], lr=0.1)
-
-        # PGD optimization loop.
-        for i in range(timesteps):
-            optimizer.zero_grad()
-            out = eval_model.model.vision_model(pixel_values=perturbed)
-            emb = out.last_hidden_state.mean(dim=1)
-            loss = torch.nn.functional.mse_loss(emb, target_embedding)
-            loss.backward()
-            optimizer.step()
-            print(i)
-            with torch.no_grad():
-                delta = torch.clamp(perturbed - gen_img, -budget, budget)
-                perturbed.copy_(torch.clamp(gen_img + delta, 0, 1))
-        # Before converting to a PIL image, ensure that:
-        # • There are no NaNs or inf values,
-        # • The tensor is in float32 (ToPILImage works best with that),
-        # • The values are in the [0, 1] range.
-        perturbed = torch.nan_to_num(perturbed, nan=0.0, posinf=1.0, neginf=0.0)
-        perturbed = perturbed.float()  # Convert to float32 if not already.
-
-        # Convert the final perturbed image to a PIL image.
-        modified_image = transforms.ToPILImage()(perturbed.squeeze().cpu())
-
-        # Clean up local variables.
-        del optimizer, perturbed
-        torch.cuda.empty_cache()
-        gc.collect()
-        return modified_image
-    
-    """
-    from diffusers import StableDiffusionXLPipeline
-    import torch
-    from PIL import Image
-    from IPython.display import display
-
-    model_id = "stabilityai/stable-diffusion-xl-base-1.0"
-
-        # Load the pipeline with half precision for speed if using GPU.
-    pipe = StableDiffusionXLPipeline.from_pretrained(
-            model_id,
-            torch_dtype=torch.float16
-        )
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    pipe = pipe.to(device)
-    result = pipe(prompt=target[:-14], num_inference_steps=50, guidance_scale=7.5).images[0]
-    """
+        
     tokenizer = eval_model.tokenizer
     target = target.lower().strip().replace("_", " ")
     target_token_len = len(tokenizer.encode(target)) - 1
@@ -326,32 +209,16 @@ def attack(
                 qformer_input_ids_list.append(qformer_text_encoding["input_ids"])
                 qformer_attention_mask_list.append(qformer_text_encoding["attention_mask"])
             
-        input_x_original = eval_model._prepare_images_no_normalize(item_images).to(device)
-        
-        sdxl_result_path="/teamspace/studios/this_studio/Re-CroPA/sdxl_gen_images/toolate.jpg"
-        gen_img_pil = Image.open(sdxl_result_path).convert("RGB")
-        to_tensor = transforms.ToTensor()
-        gen_img_tensor = to_tensor(gen_img_pil)
-        
         # create a learnable noise tensor and embedding dict
         if model_name in ["blip2","instructblip"]:
-            modified_img = pgd_align_images_with_loaded_blip2(
-                            budget=0.05,
-                            timesteps=150,
-                            gen_img_path= input_x_original ,  # Replace with your path.
-                            target_img_path= gen_img_pil# Replace with your target image path.
-                        )
-            transform = transforms.Compose([
-                        transforms.Resize((224, 224)),
-                        transforms.ToTensor()
-                        ])
-            noise = transform(modified_img).unsqueeze(0).to(device) - input_x_original
-            noise.to(device).requires_grad_()
+            noise = torch.randn([1,3,224,224], requires_grad=True,device = device)
             lm_emb = eval_model.model.language_model.get_input_embeddings()
         else:
             noise = torch.randn([1,1,3,224,224], requires_grad=True,device = device)
             lm_emb = eval_model.model.lang_encoder.get_input_embeddings()   
-                    
+            
+        input_x_original = eval_model._prepare_images_no_normalize(item_images).to(device)        
+        
         perturb_list = []
         for i in input_ids_list:
             perturb = torch.zeros_like(lm_emb(i),device="cpu",requires_grad=True)
@@ -362,7 +229,76 @@ def attack(
         access_order = deque(access_order) 
         index_count = 0
         t_ids = []
-        
+        def get_value_vectors(pixel_values):
+            # reshape pixel_values from [B, I, F, C, H, W] to [B, C, H, W]
+            if pixel_values.dim() == 3:  
+                 pixel_values = pixel_values.unsqueeze(0)  # Convert [3, 224, 224] → [1, 3, 224, 224]
+            pixel_values = pixel_values.float()
+            collected_hidden_states = {}
+            """
+            For open flamingo
+            """
+            # Define a hook function that saves the output for a given layer index.
+            def hook_fn(layer_idx):
+                def hook(module, input, output):
+                    collected_hidden_states[layer_idx] = output
+                return hook
+            #eval_model.model.vision_encoder = MyVisionEncoder(eval_model.model.vision_encoder)
+             # Assume that the intermediate transformer blocks are stored in:
+            transformer = eval_model.model.vision_encoder.visual.transformer.resblocks
+
+            hooks = []
+            # Register hooks on transformer blocks with indices in the desired range.
+            # Adjust the range as needed (here assuming 14 to 28, inclusive)
+            for i, block in enumerate(transformer):
+                if 14 <= i < 29:
+                    hook = block.register_forward_hook(hook_fn(i))
+                    hooks.append(hook)
+
+            # Run a forward pass to trigger the hooks.
+            with torch.cuda.amp.autocast(enabled=False):
+                _ = eval_model.model.vision_encoder.visual(pixel_values)
+
+            # Remove hooks after the forward pass.
+            for h in hooks:
+                h.remove()
+
+            # Sort the collected hidden states by layer index.
+            hidden_states = [collected_hidden_states[i] for i in sorted(collected_hidden_states.keys())]
+            # Concatenate them along the channel dimension (usually dim=1).
+            value_vectors = torch.cat(hidden_states, dim=1)
+            return value_vectors
+            
+            print(dir(eval_model.model.vision_encoder.visual))
+            with torch.cuda.amp.autocast(enabled=False):
+                vision_outputs = eval_model.model.vision_encoder.forward_intermediates(
+                    image=pixel_values,
+                    image_indices=list(range(14, 29)),
+                    normalize=False,           # Do not normalize intermediates now
+                    intermediates_only=True      # We only need the intermediates
+                )
+            print("data type is: ", type(vision_outputs))
+            print(vision_outputs)
+            vision_outputs=dict(vision_outputs)
+            hidden_states = vision_outputs.hidden_states
+            num_layers = len(hidden_states)
+            middle_to_late_layers = range( 14, 29)
+            value_vectors = [hidden_states[layer_idx] for layer_idx in middle_to_late_layers]
+            return torch.cat(value_vectors, dim=1)
+
+        transform = transforms.Compose([
+                    transforms.Resize((224, 224)),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # CLIP normalization
+                    ])
+        sdxl_result_path="/teamspace/studios/this_studio/Re-CroPA/sdxl_gen_images/bomb.png"
+        gen_img_pil = Image.open(sdxl_result_path).convert("RGB")
+        target_inputs = transform(gen_img_pil).unsqueeze(0).to(device)
+        print(f"target_inputs shape: {target_inputs.shape}")  
+        # Expected: torch.Size([1, 3, 224, 224])
+
+        with torch.no_grad():
+            target_value_vectors = get_value_vectors(target_inputs).float()
         for ep in range(iters):
             # get the text index to update
             if index_count != 0 and index_count % prompt_num == 0:
@@ -395,14 +331,25 @@ def attack(
                 inputs_embeds = None
             
             if model_name=="open_flamingo":
+                perturbed_inputs = torch.clamp(input_x, 0, 1)
+                #print("pertubed inputs shape:", perturbed_inputs.shape)
+                # Ensure correct reshaping from [1, I, F, C, H, W] -> [B, C, H, W]
+                if perturbed_inputs.dim() == 6:
+                    perturbed_inputs = perturbed_inputs[:, 0, 0, :, :, :]  # Select first I and F
+                #perturbed_inputs=perturbed_inputs.squeeze(0).squeeze(0)
+                perturbed_value_vectors = get_value_vectors(perturbed_inputs).float()
+                cosine_similarity_loss = torch.nn.CosineSimilarity(dim=-1)
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
                     lang_x=input_ids,
                     vision_x=input_x,                
                     attention_mask=attention_mask,
                     labels=labels
-                )[0]
+                )[0]  -5*cosine_similarity_loss(perturbed_value_vectors, target_value_vectors).mean()
             elif model_name=="blip2":
+                perturbed_inputs = torch.clamp(input_x, 0, 1)
+                perturbed_value_vectors = get_value_vectors(perturbed_inputs).float()
+                cosine_similarity_loss = torch.nn.CosineSimilarity(dim=-1)
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
                     input_ids=input_ids,
@@ -410,7 +357,7 @@ def attack(
                     attention_mask=attention_mask,
                     labels=labels,
                     normalize_vision_input = True
-                )[0]
+                )[0] -5*cosine_similarity_loss(perturbed_value_vectors, target_value_vectors).mean()
             elif model_name=="instructblip":
                 loss = eval_model.model(  
                     inputs_embeds=inputs_embeds,
@@ -593,8 +540,8 @@ if __name__=="__main__":
                         help="The device id of the GPU to use")
     parser.add_argument("--iter_num", type=int, default=300,
                         help="The num of attack iterations")
-    parser.add_argument("--model_name", type=str, default="blip2", #before: instructblip
-                        help="The num of attack iter")
+    parser.add_argument("--model_name", type=str, default="open_flamingo", #before: instructblip
+                        help="Theum of attack iter")
     parser.add_argument("--quick_eval", type=bool, default=False,
                         help="set to false to generate the result given clean images")
     parser.add_argument("--fraction", type=float, default=0.05,
@@ -612,11 +559,9 @@ if __name__=="__main__":
     if config_args.device >= 0:
         print("use specified gpu",config_args.device)
     else:
-        config_args.device= get_available_gpus(5000)[0]
+        config_args.device= get_available_gpus(45000)[0]
     device= f"cuda:{ config_args.device}"
-    print("Device is:", device)
     eval_model = load_model(config_args.device,module,config_args.model_name)
-    print("model loaded")
     train_dataset, test_dataset = load_datasets(config_args)
     num_shots = config_args.shot
     prompt_num = config_args.prompt_num
@@ -626,8 +571,9 @@ if __name__=="__main__":
     else:    
         prompt_num_to_alpha2 = config_args.prompt_num_to_alpha2    
         alpha2 = prompt_num_to_alpha2[prompt_num]
-
     
+    
+
     iter_num = 1701
     
     attack(
@@ -647,3 +593,7 @@ if __name__=="__main__":
         prompt_num=config_args.prompt_num,
         datasets=(train_dataset,  test_dataset),
     )
+
+
+
+# %%
