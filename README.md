@@ -533,7 +533,7 @@ pip install open_clip_torch  # optional if using OpenCLIP
    * **Stable Diffusion XL Checkpoint**: Place checkpoint under `checkpoints/sdxl/`.
 
 4. **Install Dataset**
-   * Navigate to 'dataset' folder and run the following commands and extract the contents to setup the dataset:
+   * Navigate to 'dataset' folder and run the following commands to setup the dataset:
 
    ```bash
    wget http://images.cocodataset.org/zips/train2014.zip
@@ -544,6 +544,8 @@ pip install open_clip_torch  # optional if using OpenCLIP
    for zip in *.zip; do unzip "$zip"; done
    rm *.zip
    ```
+
+   > **Note**: Add the path to your dataset folder in `data\config.json`.
    ---
 
 ### Directory Structure
