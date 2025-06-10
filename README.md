@@ -532,7 +532,19 @@ pip install open_clip_torch  # optional if using OpenCLIP
      * For Flamingo / LLaVA, refer to [OpenFlamingo](https://github.com/frankzhou714/OpenFlamingo) and [LLaVA](https://github.com/haotian-liu/LLaVA) respectively.
    * **Stable Diffusion XL Checkpoint**: Place checkpoint under `checkpoints/sdxl/`.
 
----
+4. **Install Dataset**
+   * Navigate to 'dataset' folder and run the following commands and extract the contents to setup the dataset:
+
+   ```bash
+   wget http://images.cocodataset.org/zips/train2014.zip
+   wget http://images.cocodataset.org/zips/val2014.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip
+   for zip in *.zip; do unzip "$zip"; done
+   rm *.zip
+   ```
+   ---
 
 ### Directory Structure
 
