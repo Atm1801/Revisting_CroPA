@@ -22,6 +22,24 @@ PROMPT_FILE="" # To store path to prompt.txt
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
+        --algorithm=*) ALGORITHM="${1#*=}" ;;
+        --model_name=*) MODEL_NAME="${1#*=}" ;;
+        --vqav2_eval_annotations_json_path=*) VQAV2_EVAL_ANNOTATIONS_JSON_PATH="${1#*=}" ;;
+        --device=*) DEVICE="${1#*=}" ;;
+        --max_generation_length=*) MAX_GENERATION_LENGTH="${1#*=}" ;;
+        --num_beams=*) NUM_BEAMS="${1#*=}" ;;
+        --length_penalty=*) LENGTH_PENALTY="${1#*=}" ;;
+        --num_shots=*) NUM_SHOTS="${1#*=}" ;;
+        --alpha1=*) ALPHA1="${1#*=}" ;;
+        --epsilon=*) EPSILON="${1#*=}" ;;
+        --iters=*) ITERS="${1#*=}" ;;
+        --alpha2=*) ALPHA2="${1#*=}" ;;
+        --fraction=*) FRACTION="${1#*=}" ;;
+        --base_dir=*) BASE_DIR="${1#*=}" ;;
+        --prompt_num=*) PROMPT_NUM="${1#*=}" ;;
+        --target=*) TARGET_TEXT_FROM_ARG="${1#*=}" ;;
+        --prompt_file=*) PROMPT_FILE="${1#*=}" ;;
+        # For space-separated arguments (e.g., --param value)
         --algorithm) ALGORITHM="$2"; shift ;;
         --model_name) MODEL_NAME="$2"; shift ;;
         --vqav2_eval_annotations_json_path) VQAV2_EVAL_ANNOTATIONS_JSON_PATH="$2"; shift ;;
@@ -57,19 +75,19 @@ DEFAULT_TARGET_TEXT=""
 
 case "$ALGORITHM" in
     "cropa")
-        PYTHON_SCRIPT="main (1).py"
+        PYTHON_SCRIPT="main.py"
         METHOD_PARAM="cropa"
-        DEFAULT_TARGET_TEXT="bomb<|endofchunk|>"
+        DEFAULT_TARGET_TEXT="bomb"
         ;;
     "duap")
         PYTHON_SCRIPT="main_with_duap.py"
-        METHOD_PARAM="duap"
-        DEFAULT_TARGET_TEXT="bomb<|endofchunk|>"
+        METHOD_PARAM="cropa"
+        DEFAULT_TARGET_TEXT="bomb"
         ;;
     "init")
-        PYTHON_SCRIPT="main_with_init.py"
-        METHOD_PARAM="init"
-        DEFAULT_TARGET_TEXT="unknown<|endofchunk|>"
+        PYTHON_SCRIPT="noise_init/main_with_init.py"
+        METHOD_PARAM="cropa"
+        DEFAULT_TARGET_TEXT="bomb"
         ;;
     *)
         echo "Invalid algorithm selected: $ALGORITHM"
