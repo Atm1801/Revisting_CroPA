@@ -20,45 +20,6 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 
 ---
 
-## Table of Contents
-
-1. [Paper & Code Links](#paper--code-links)
-2. [Abstract](#abstract)
-3. [Setup](#setup)
-
-   * [Prerequisites](#prerequisites)
-   * [Installation](#installation)
-   * [Directory Structure](#directory-structure)
-   * [Running Baseline CroPA](#running-baseline-cropa)
-   * [Running Enhanced Methods](#running-enhanced-methods)
-   * [Evaluation Scripts](#evaluation-scripts)
-4. [Key Contributions](#key-contributions)
-5. [Background & Motivation](#background--motivation)
-6. [Methodology](#methodology)
-
-   * [Reproducing CroPA (Baseline)](#reproducing-cropa-baseline)
-   * [Enhancement #1: Semantic Initialization](#enhancement-1-semantic-initialization)
-   * [Enhancement #2: Cross-Image Transferability](#enhancement-2-cross-image-transferability)
-   * [Enhancement #3: Value-Vector–Guided Loss (D-UAP)](#enhancement-3-value-vector–guided-loss-d-uap)
-7. [Experimental Setup](#experimental-setup)
-
-   * [Datasets & Prompts](#datasets--prompts)
-   * [Vision-Language Models](#vision–language-models)
-   * [Threat Models](#threat-models)
-   * [Implementation Details](#implementation-details)
-8. [Results & Analysis](#results--analysis)
-
-   * [Reproducibility of CroPA Claims](#reproducibility-of-cropa-claims)
-   * [Improvement #1: Semantic Initialization](#improvement-1-semantic-initialization)
-   * [Improvement #2: Cross-Image Transferability](#improvement-2-cross-image-transferability)
-   * [Improvement #3: D-UAP–Guided Loss](#improvement-3-d-uap–guided-loss)
-   * [Ablation & Convergence Analyses](#ablation--convergence-analyses)
-9. [License](#license)
-10. [Citation](#citation)
-11. [Acknowledgments](#acknowledgments)
-
----
-
 ## Abstract
 
 > *“Large Vision-Language Models (VLMs) have revolutionized computer vision, enabling tasks such as image classification, captioning, and VQA. However, they remain highly vulnerable to adversarial attacks, especially in scenarios where both visual and textual modalities can be manipulated. We conduct a comprehensive reproducibility study of “An Image is Worth 1000 Lies: Adversarial Transferability Across Prompts on Vision-Language Models” (Luo *et al.* 2024), validating the Cross-Prompt Attack (CroPA) and confirming its superior cross-prompt transferability compared to existing baselines. Beyond replication, we propose three key enhancements: (1) A novel semantic initialization strategy that significantly improves Attack Success Rate (ASR) and convergence; (2) Investigating cross-image transferability by learning universal perturbations via SCMix and CutMix; (3) A novel value-vector–guided loss function targeting the vision encoder’s attention to improve generalization. Our evaluation across Flamingo, BLIP-2, InstructBLIP, and LLaVA validates the original findings and demonstrates that our improvements consistently boost adversarial effectiveness. Our work reinforces the importance of studying adversarial vulnerabilities in VLMs and provides a more robust framework for generating transferable adversarial examples.”*
