@@ -24,28 +24,7 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 
 1. [Paper & Code Links](#paper--code-links)
 2. [Abstract](#abstract)
-3. [Key Contributions](#key-contributions)
-4. [Background & Motivation](#background--motivation)
-5. [Methodology](#methodology)
-
-   * [Reproducing CroPA (Baseline)](#reproducing-cropa-baseline)
-   * [Enhancement #1: Semantic Initialization](#enhancement-1-semantic-initialization)
-   * [Enhancement #2: Cross-Image Transferability](#enhancement-2-cross-image-transferability)
-   * [Enhancement #3: Value-Vector–Guided Loss (D-UAP)](#enhancement-3-value-vector–guided-loss-d-uap)
-6. [Experimental Setup](#experimental-setup)
-
-   * [Datasets & Prompts](#datasets--prompts)
-   * [Vision-Language Models](#vision–language-models)
-   * [Threat Models](#threat-models)
-   * [Implementation Details](#implementation-details)
-7. [Results & Analysis](#results--analysis)
-
-   * [Reproducibility of CroPA Claims](#reproducibility-of-cropa-claims)
-   * [Improvement #1: Semantic Initialization](#improvement-1-semantic-initialization)
-   * [Improvement #2: Cross-Image Transferability](#improvement-2-cross-image-transferability)
-   * [Improvement #3: D-UAP–Guided Loss](#improvement-3-d-uap–guided-loss)
-   * [Ablation & Convergence Analyses](#ablation--convergence-analyses)
-8. [How to Reproduce](#how-to-reproduce)
+3. [Setup](#setup)
 
    * [Prerequisites](#prerequisites)
    * [Installation](#installation)
@@ -53,20 +32,31 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
    * [Running Baseline CroPA](#running-baseline-cropa)
    * [Running Enhanced Methods](#running-enhanced-methods)
    * [Evaluation Scripts](#evaluation-scripts)
+4. [Key Contributions](#key-contributions)
+5. [Background & Motivation](#background--motivation)
+6. [Methodology](#methodology)
+
+   * [Reproducing CroPA (Baseline)](#reproducing-cropa-baseline)
+   * [Enhancement #1: Semantic Initialization](#enhancement-1-semantic-initialization)
+   * [Enhancement #2: Cross-Image Transferability](#enhancement-2-cross-image-transferability)
+   * [Enhancement #3: Value-Vector–Guided Loss (D-UAP)](#enhancement-3-value-vector–guided-loss-d-uap)
+7. [Experimental Setup](#experimental-setup)
+
+   * [Datasets & Prompts](#datasets--prompts)
+   * [Vision-Language Models](#vision–language-models)
+   * [Threat Models](#threat-models)
+   * [Implementation Details](#implementation-details)
+8. [Results & Analysis](#results--analysis)
+
+   * [Reproducibility of CroPA Claims](#reproducibility-of-cropa-claims)
+   * [Improvement #1: Semantic Initialization](#improvement-1-semantic-initialization)
+   * [Improvement #2: Cross-Image Transferability](#improvement-2-cross-image-transferability)
+   * [Improvement #3: D-UAP–Guided Loss](#improvement-3-d-uap–guided-loss)
+   * [Ablation & Convergence Analyses](#ablation--convergence-analyses)
 9. [License](#license)
 10. [Citation](#citation)
 11. [Acknowledgments](#acknowledgments)
 
----
-
-## Paper & Code Links
-
-* **Paper (Under Review)**: [Revisiting\_CroPA\_A\_Reprod.pdf]([./Revisiting_CroPA_A_Reprod.pdf](https://openreview.net/pdf?id=5L90cl0xtf))
-* **GitHub Repository**:
-
-  ```
-  https://github.com/Swadesh06/Revisting_CroPA.git
-  ```
 ---
 
 ## Abstract
@@ -74,6 +64,61 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 > *“Large Vision-Language Models (VLMs) have revolutionized computer vision, enabling tasks such as image classification, captioning, and VQA. However, they remain highly vulnerable to adversarial attacks, especially in scenarios where both visual and textual modalities can be manipulated. We conduct a comprehensive reproducibility study of “An Image is Worth 1000 Lies: Adversarial Transferability Across Prompts on Vision-Language Models” (Luo *et al.* 2024), validating the Cross-Prompt Attack (CroPA) and confirming its superior cross-prompt transferability compared to existing baselines. Beyond replication, we propose three key enhancements: (1) A novel semantic initialization strategy that significantly improves Attack Success Rate (ASR) and convergence; (2) Investigating cross-image transferability by learning universal perturbations via SCMix and CutMix; (3) A novel value-vector–guided loss function targeting the vision encoder’s attention to improve generalization. Our evaluation across Flamingo, BLIP-2, InstructBLIP, and LLaVA validates the original findings and demonstrates that our improvements consistently boost adversarial effectiveness. Our work reinforces the importance of studying adversarial vulnerabilities in VLMs and provides a more robust framework for generating transferable adversarial examples.”*
 
 ---
+
+## Setup
+
+This section guides you through reproducing all experiments: baseline CroPA, semantic‐init CroPA, cross‐image UAPs, and D-UAP–guided CroPA.
+
+### Prerequisites
+
+* **Operating System**: Ubuntu 20.04 LTS (or equivalent Linux distribution)
+* **Python**: ≥ 3.8
+* **CUDA**: ≥ 11.6 (for GPU acceleration)
+* **NVIDIA GPU**: ≥ 40 GB VRAM (e.g., L40S, A100) recommended for large‐scale training.
+
+---
+
+### Installation
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone https://github.com/Swadesh06/Revisiting-CroPA.git
+   cd Revisiting-CroPA
+   ```
+
+2. **Install Core Requirements**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+   * `requirements.txt` pins library versions tested in our experiments.
+
+3. **Model Weights**
+
+   * **CLIP ViT-L/14**: automatically downloaded via `transformers` or `open_clip_torch`.
+   * **OPT-2.7B** & **Vicuna-7B/13B**:
+
+     * For BLIP-2 / InstructBLIP, follow instructions in [Salesforce/blip-2](https://github.com/salesforce/BLIP) repo.
+     * For Flamingo / LLaVA, refer to [OpenFlamingo](https://github.com/frankzhou714/OpenFlamingo) and [LLaVA](https://github.com/haotian-liu/LLaVA) respectively.
+   * **Stable Diffusion XL Checkpoint**: Place checkpoint under `checkpoints/sdxl/`.
+
+4. **Install Dataset**
+   * Navigate to 'dataset' folder and run the following commands to setup the dataset:
+
+   ```bash
+   wget http://images.cocodataset.org/zips/train2014.zip
+   wget http://images.cocodataset.org/zips/val2014.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip
+   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip
+   for zip in *.zip; do unzip "$zip"; done
+   rm *.zip
+   ```
+
+   > **Note**: Add the path to your dataset folder in `data\config.json`.
+   ---
 
 ## Key Contributions
 
@@ -460,61 +505,6 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
 * **SCMix vs. CutMix**: SCMix’s two‐stage mixing encourages smoother latent blends, yielding higher cross-image ASR at earlier iterations (Figure in Appendix D.3).
 
 ---
-
-## How to Reproduce
-
-This section guides you through reproducing all experiments: baseline CroPA, semantic‐init CroPA, cross‐image UAPs, and D-UAP–guided CroPA.
-
-### Prerequisites
-
-* **Operating System**: Ubuntu 20.04 LTS (or equivalent Linux distribution)
-* **Python**: ≥ 3.8
-* **CUDA**: ≥ 11.6 (for GPU acceleration)
-* **NVIDIA GPU**: ≥ 40 GB VRAM (e.g., L40S, A100) recommended for large‐scale training.
-
----
-
-### Installation
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone https://github.com/Swadesh06/Revisiting-CroPA.git
-   cd Revisiting-CroPA
-   ```
-
-2. **Install Core Requirements**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-   * `requirements.txt` pins library versions tested in our experiments.
-
-3. **Model Weights**
-
-   * **CLIP ViT-L/14**: automatically downloaded via `transformers` or `open_clip_torch`.
-   * **OPT-2.7B** & **Vicuna-7B/13B**:
-
-     * For BLIP-2 / InstructBLIP, follow instructions in [Salesforce/blip-2](https://github.com/salesforce/BLIP) repo.
-     * For Flamingo / LLaVA, refer to [OpenFlamingo](https://github.com/frankzhou714/OpenFlamingo) and [LLaVA](https://github.com/haotian-liu/LLaVA) respectively.
-   * **Stable Diffusion XL Checkpoint**: Place checkpoint under `checkpoints/sdxl/`.
-
-4. **Install Dataset**
-   * Navigate to 'dataset' folder and run the following commands to setup the dataset:
-
-   ```bash
-   wget http://images.cocodataset.org/zips/train2014.zip
-   wget http://images.cocodataset.org/zips/val2014.zip
-   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Questions_Train_mscoco.zip
-   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Train_mscoco.zip
-   wget https://s3.amazonaws.com/cvmlp/vqa/mscoco/vqa/v2_Annotations_Val_mscoco.zip
-   for zip in *.zip; do unzip "$zip"; done
-   rm *.zip
-   ```
-
-   > **Note**: Add the path to your dataset folder in `data\config.json`.
-   ---
 
 ### Directory Structure
 
