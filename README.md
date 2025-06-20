@@ -1,8 +1,6 @@
 # Revisiting CroPA: A Reproducibility Study and Enhancements for Cross-Prompt Adversarial Transferability in Vision-Language Models
 
-*(Under review at TMLR)*
-
-[![TMLR Under Review](https://img.shields.io/badge/TMLR-Under%20Review-blue)](#)
+[![TMLR](https://img.shields.io/badge/TMLR-blue)](#)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#)
 
