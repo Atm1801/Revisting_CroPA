@@ -7,7 +7,7 @@
 
 ## Overview
 
-Large Vision-Language Models (VLMs) such as Flamingo, BLIP-2, InstructBLIP, and LLaVA have achieved remarkable performance across tasks like image classification, captioning, and Visual Question Answering (VQA). However, these models remain vulnerable to adversarial attacks, especially when both visual and textual modalities can be manipulated. In “Revisiting CroPA: A Reproducibility Study and Enhancements for Cross-Prompt Adversarial Transferability in Vision-Language Models,” we undertake a comprehensive reproducibility study of **CroPA** (“Cross-Prompt Attack”), first introduced by Luo *et al.* (2024), and propose three major enhancements that improve adversarial efficacy and transferability:
+Large Vision-Language Models (VLMs) such as Flamingo, BLIP-2, InstructBLIP, and LLaVA have achieved remarkable performance across tasks like image classification, captioning, and Visual Question Answering (VQA). However, these models remain vulnerable to adversarial attacks, especially when both visual and textual modalities can be manipulated. In this work, we propose CroPA++, a framework that addresses the shortcomings of **CroPA** (“Cross-Prompt Attack”), first introduced by Luo *et al.* (2024),  through three complementary enhancements that improve adversarial efficacy and transferability:
 
 1. **Semantic Initialization via Vision-Encoding Optimization**
 2. **Cross-Image Transferability with Universal Perturbations (SCMix & CutMix)**
