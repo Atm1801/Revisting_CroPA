@@ -1,15 +1,11 @@
-# Revisiting CroPA: A Reproducibility Study and Enhancements for Cross-Prompt Adversarial Transferability in Vision-Language Models
+# CroPA++: Enhancing Cross-Prompt Adversarial Transferability in Vision–Language Models
 
-[![MLRC](https://img.shields.io/badge/MLRC-red)](#)
-[![TMLR](https://img.shields.io/badge/TMLR-blue)](#)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#)
 
 ---
 
 ## Overview
-
-This is the official code for the paper [Revisiting CroPA](https://openreview.net/forum?id=5L90cl0xtf)
 
 Large Vision-Language Models (VLMs) such as Flamingo, BLIP-2, InstructBLIP, and LLaVA have achieved remarkable performance across tasks like image classification, captioning, and Visual Question Answering (VQA). However, these models remain vulnerable to adversarial attacks, especially when both visual and textual modalities can be manipulated. In “Revisiting CroPA: A Reproducibility Study and Enhancements for Cross-Prompt Adversarial Transferability in Vision-Language Models,” we undertake a comprehensive reproducibility study of **CroPA** (“Cross-Prompt Attack”), first introduced by Luo *et al.* (2024), and propose three major enhancements that improve adversarial efficacy and transferability:
 
@@ -25,7 +21,7 @@ Our experiments validate CroPA’s original claims and demonstrate that the prop
 
 ## Abstract
 
-> *“Large Vision-Language Models (VLMs) have revolutionized computer vision, enabling tasks such as image classification, captioning, and VQA. However, they remain highly vulnerable to adversarial attacks, especially in scenarios where both visual and textual modalities can be manipulated. We conduct a comprehensive reproducibility study of “An Image is Worth 1000 Lies: Adversarial Transferability Across Prompts on Vision-Language Models” (Luo *et al.* 2024), validating the Cross-Prompt Attack (CroPA) and confirming its superior cross-prompt transferability compared to existing baselines. Beyond replication, we propose three key enhancements: (1) A novel semantic initialization strategy that significantly improves Attack Success Rate (ASR) and convergence; (2) Investigating cross-image transferability by learning universal perturbations via SCMix and CutMix; (3) A novel value-vector–guided loss function targeting the vision encoder’s attention to improve generalization. Our evaluation across Flamingo, BLIP-2, InstructBLIP, and LLaVA validates the original findings and demonstrates that our improvements consistently boost adversarial effectiveness. Our work reinforces the importance of studying adversarial vulnerabilities in VLMs and provides a more robust framework for generating transferable adversarial examples.”*
+> *“Vision-Language Models (VLMs) have revolutionized computer vision, enabling tasks such as image classification, captioning, and visual question answering. However, they remain highly vulnerable to adversarial attacks, particularly in scenarios where both visual and textual modalities can be manipulated. Cross-Prompt attacks, introduced by Luo et al. [2024],, demonstrated that image perturbations can retain adversarial impact across varying textual prompts. This new paradigm of attack presents several limitations hinder broader reliability: sensitivity to initialization, lack of generalization, and high compute cost vs yield. We address these gaps with three complementary enhancements: (1) Noise Initialization via semantically informed alignment, (2) Value-Vector DUAP Guidance targeting encoder attention mechanisms, and (3) Cross-Image Universal Training with SCMix and CutMix augmentations. Evaluations on BLIP-2, InstructBLIP, LLaVA, and OpenFlamingo across VQA, captioning, and classification show that our enhancements provide consistent gains previous methods and baselines in Attack Success Rate (ASR), stability, and transferability.”*
 
 ---
 
@@ -86,25 +82,18 @@ This section guides you through reproducing all experiments: baseline CroPA, sem
 
 ## Key Contributions
 
-1. **Comprehensive Reproducibility Study of CroPA**
-
-   * **Claim 1**: CroPA’s cross-prompt transferability across diverse target texts
-   * **Claim 2**: CroPA outperforms Single-P and Multi-P baselines when varying the number of prompts
-   * **Claim 3**: CroPA converges to higher ASRs as the number of PGD iterations increases (per-task convergence nuance discussed)
-   * **Claim 4**: CroPA remains effective under few-shot (in-context) settings (0-shot → 2-shot)
-
-2. **Enhancement #1: Semantic Initialization via Vision-Encoding Optimization**
+1. **Enhancement #1: Semantic Initialization via Vision-Encoding Optimization**
 
    * Leverage a diffusion-based approach (e.g., Stable Diffusion XL) to generate a semantically relevant “target image” for a given prompt.
    * Initialize adversarial perturbations by minimizing the \$\ell\_2\$ distance in the vision encoder embedding space between the clean image \$x\$ and the generated target \$x\_{\text{target}}\$.
    * Demonstrate 6–15 % overall ASR improvements on BLIP-2, faster convergence, and higher CLIP–score alignment with target semantics.
 
-3. **Enhancement #2: Cross-Image Transferability (SCMix & CutMix)**
+2. **Enhancement #2: Cross-Image Transferability (SCMix & CutMix)**
 
    * Integrate **SCMix** (self-mixing + cross-mixing) and **CutMix** augmentations into CroPA’s PGD loop to learn *universal* perturbations across multiple images.
    * Achieve substantial improvements in untargeted ASR across unseen images on Flamingo and BLIP-2, though still highlight inherent challenges in cross-image generalization.
 
-4. **Enhancement #3: Value-Vector–Guided Loss for Vision-Encoder Attention (D-UAP Integration)**
+3. **Enhancement #3: Value-Vector–Guided Loss for Vision-Encoder Attention (D-UAP Integration)**
 
    * Adapt the Doubly-Universal Adversarial Perturbation (D-UAP) concept by aligning perturbations in the **value-vector space** of the vision encoder’s attention layers, targeting layers most crucial for semantic representation.
    * Formulate a joint objective
@@ -113,7 +102,7 @@ This section guides you through reproducing all experiments: baseline CroPA, sem
      > with \$V\_i(\cdot)\$ denoting value vectors of the \$i\$th attention head for an input image, and \$V\_t\$ the target text’s reference image value vectors.
    * Realize **12.5 %** overall ASR gains on BLIP-2 and large improvements in cross-model transferability when source and target share the same vision encoder.
 
-5. **Insightful Analyses**
+4. **Insightful Analyses**
 
    * **Convergence Behavior**: Discuss per-task instability in CroPA’s convergence despite original overall ASR trends (Figure 5 & 6).
    * **Cross-Model Transferability**: D-UAP enhancements yield strong intra–family (BLIP-2 → InstructBLIP) transferability and moderate cross-architecture (BLIP-2 → Flamingo, LLaVA) gains.
@@ -179,13 +168,6 @@ Our work addresses these gaps via principled enhancements, yielding stronger, mo
 
 * **Single-P**: Optimize \$\delta\_v\$ using a single prompt (Eq. 3).
 * **Multi-P**: Optimize \$\delta\_v\$ across multiple prompts, summing losses (Eq. 4).
-
-We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and LLaVA to validate four main claims:
-
-1. **Cross-Prompt Transferability** (Claim 1)
-2. **Performance vs. Number of Prompts** (Claim 2)
-3. **Convergence w\.r.t. Iterations** (Claim 3)
-4. **Robustness under Few-Shot (0→2-Shot) Context** (Claim 4)
 
 ---
 
@@ -384,18 +366,6 @@ We replicate Luo *et al.*’s experiments on Flamingo, BLIP-2, InstructBLIP, and
 
 ## Results & Analysis
 
-### Reproducibility of CroPA Claims
-
-|                   Claim                   |                                                                           Our Findings (Flamingo)                                                                           |                                                 Original (Luo *et al.*, 2024)                                                 |
-| :---------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------: |
-|    **1. Cross-Prompt Transferability**    | CroPA yields high ASRs (≈ ≥ 0.8–0.98) across “unknown,” “I am sorry,” “not sure,” “very good,” “too late,” “metaphor.” Baseline Single-P & Multi-P under‐perform. (Table 1) |               Congruent: CroPA significantly outperforms baselines; transfer independent of semantic frequency.               |
-|          **2. ASR vs. # Prompts**         |                            With 1, 2, 5, 10 prompts, CroPA consistently > Multi-P & Single-P; baselines saturate below CroPA’s curve. (Figure 4)                            |                            Congruent: CroPA’s ASR improves with # prompts; baselines cannot match.                            |
-| **3. Convergence w\.r.t. PGD Iterations** |                 Overall ASR increases with iterations (Figure 6), but per‐task ASR exhibits fluctuations (Figure 5), highlighting task‐specific instability.                | Mostly Congruent: Luo *et al.* report smooth overall ASR convergence; per‐task convergence details not extensively discussed. |
-|         **4. Few‐Shot (0→2-Shot)**        |                               CroPA’s ASR drops moderately when switching to 2‐shot context but remains significantly above Multi-P (Table 2).                              |                             Congruent: CroPA > baselines under 2‐shot context though ASR reduces.                             |
-
-> **Conclusion**: We successfully reproduce all four core CroPA claims, with nuances around per‐task convergence.
-
----
 
 ### Improvement #1: Semantic Initialization
 
@@ -575,27 +545,9 @@ To run an algorithm, use the `run_algorithm.sh` script and pass parameters as co
 
 ---
 
----
-
 ## License
 
 This repository is released under the [MIT License](./LICENSE.md). Feel free to use and modify for research purposes.
-
----
-
-## Citation
-
-```bibtex
-@article{RevisitingCroPA2025,
-  title     = {Revisiting CroPA: A Reproducibility Study and Enhancements for Cross-Prompt Adversarial Transferability in Vision-Language Models},
-  author    = {Anonymous},
-  journal   = {Under Review at TMLR},
-  year      = {2025},
-  note      = {Under double-blind review}
-}
-```
-
-> **Please cite this paper** if you use any part of the experiments, code, or insights provided herein.
 
 ---
 
