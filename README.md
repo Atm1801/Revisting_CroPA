@@ -138,7 +138,7 @@ Our work addresses these gaps via principled enhancements, yielding stronger, mo
 
 ## Methodology
 
-### Reproducing CroPA (Baseline)
+### CroPA (Baseline)
 
 **CroPA Overview** (Luo *et al.* 2024)
 
